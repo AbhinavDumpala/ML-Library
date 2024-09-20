@@ -1,0 +1,146 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+
+class DecisionTree:
+    def __init__(self, criterion="information_gain", max_depth=None):
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.tree = None
+
+    def fit(self, X, y):
+        self.tree = self._build_tree(X, y, depth=0)
+
+    def predict(self, X):
+        predictions = [self._predict_single(x, X.columns, self.tree) for x in X.to_numpy()]
+        return np.array(predictions)
+
+    def _predict_single(self, x, columns, tree):
+        if not isinstance(tree, dict):
+            return tree
+        feature = list(tree.keys())[0]
+
+        try:
+            # Get the index of the feature using the column name
+            feature_index = columns.get_loc(feature)
+        except KeyError:
+            return 0  # Default prediction if feature not found (error handling)
+
+        subtree = tree[feature].get(x[feature_index], None)
+        if subtree is None:
+            return 0  # Default prediction when a branch is missing
+        return self._predict_single(x, columns, subtree)
+
+    def _build_tree(self, X, y, depth):
+        if len(np.unique(y)) == 1 or len(X) == 0 or (self.max_depth is not None and depth >= self.max_depth):
+            return self._majority_class(y)
+
+        best_feature = self._choose_best_feature(X, y)
+        tree = {best_feature: {}}
+
+        for value in np.unique(X[best_feature]):
+            X_subset, y_subset = X[X[best_feature] == value], y[X[best_feature] == value]
+            tree[best_feature][value] = self._build_tree(X_subset, y_subset, depth + 1)
+
+        return tree
+
+    def _choose_best_feature(self, X, y):
+        if self.criterion == "information_gain":
+            return self._best_feature_by_information_gain(X, y)
+        elif self.criterion == "gini_index":
+            return self._best_feature_by_gini(X, y)
+        elif self.criterion == "majority_error":
+            return self._best_feature_by_majority_error(X, y)
+
+    def _entropy(self, y):
+        _, counts = np.unique(y, return_counts=True)
+        probs = counts / len(y)
+        return -np.sum(probs * np.log2(probs))
+
+    def _information_gain(self, X, y, feature):
+        H_S = self._entropy(y)
+        values, counts = np.unique(X[feature], return_counts=True)
+        weighted_entropy = np.sum((counts / len(y)) * [self._entropy(y[X[feature] == v]) for v in values])
+        return H_S - weighted_entropy
+
+    def _best_feature_by_information_gain(self, X, y):
+        gains = [self._information_gain(X, y, feature) for feature in X.columns]
+        return X.columns[np.argmax(gains)]
+
+    def _gini(self, y):
+        _, counts = np.unique(y, return_counts=True)
+        probs = counts / len(y)
+        return 1 - np.sum(probs ** 2)
+
+    def _gini_index(self, X, y, feature):
+        values, counts = np.unique(X[feature], return_counts=True)
+        weighted_gini = np.sum((counts / len(y)) * [self._gini(y[X[feature] == v]) for v in values])
+        return weighted_gini
+
+    def _best_feature_by_gini(self, X, y):
+        gini_indices = [self._gini_index(X, y, feature) for feature in X.columns]
+        return X.columns[np.argmin(gini_indices)]
+
+    def _majority_error(self, X, y, feature):
+        values, counts = np.unique(X[feature], return_counts=True)
+        weighted_me = np.sum((counts / len(y)) * [self._me(y[X[feature] == v]) for v in values])
+        return weighted_me
+
+    def _me(self, y):
+        _, counts = np.unique(y, return_counts=True)
+        majority_count = np.max(counts)
+        return 1 - (majority_count / len(y))
+
+    def _best_feature_by_majority_error(self, X, y):
+        majority_errors = [self._majority_error(X, y, feature) for feature in X.columns]
+        return X.columns[np.argmin(majority_errors)]
+
+    def _majority_class(self, y):
+        return np.bincount(y).argmax()
+
+def calculate_error(y_true, y_pred):
+    return np.mean(y_true != y_pred)
+
+# Load the dataset
+train_data = pd.read_csv('train.csv')
+test_data = pd.read_csv('test.csv')
+
+# Separate features and labels
+X_train = train_data.iloc[:, :-1]  # All columns except the last one
+y_train = train_data.iloc[:, -1]   # The last column is the label
+X_test = test_data.iloc[:, :-1]
+y_test = test_data.iloc[:, -1]
+
+# Encode the labels (y_train, y_test) using LabelEncoder
+le = LabelEncoder()
+y_train_encoded = le.fit_transform(y_train)
+y_test_encoded = le.transform(y_test)
+
+# List to store results
+results = []
+
+# Train and evaluate the decision tree for depths from 1 to 6
+for depth in range(1, 7):
+    for criterion in ["information_gain", "gini_index", "majority_error"]:
+        tree = DecisionTree(criterion=criterion, max_depth=depth)
+        tree.fit(X_train, y_train_encoded)
+        
+        # Predict on train and test data
+        y_train_pred = tree.predict(X_train)
+        y_test_pred = tree.predict(X_test)
+        
+        # Calculate errors
+        train_error = calculate_error(y_train_encoded, y_train_pred)
+        test_error = calculate_error(y_test_encoded, y_test_pred)
+        
+        # Store results
+        results.append({
+            'Depth': depth,
+            'Criterion': criterion,
+            'Train Error': train_error,
+            'Test Error': test_error
+        })
+
+# Convert results to a DataFrame for better visualization
+results_df = pd.DataFrame(results)
+print(results_df)
