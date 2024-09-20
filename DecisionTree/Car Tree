@@ -106,12 +106,12 @@ train_data = pd.read_csv('train.csv')
 test_data = pd.read_csv('test.csv')
 
 # Separate features and labels
-X_train = train_data.iloc[:, :-1]  # All columns except the last one
-y_train = train_data.iloc[:, -1]   # The last column is the label
+X_train = train_data.iloc[:, :-1] 
+y_train = train_data.iloc[:, -1]  
 X_test = test_data.iloc[:, :-1]
 y_test = test_data.iloc[:, -1]
 
-# Encode the labels (y_train, y_test) using LabelEncoder
+# Encode the labels
 le = LabelEncoder()
 y_train_encoded = le.fit_transform(y_train)
 y_test_encoded = le.transform(y_test)
