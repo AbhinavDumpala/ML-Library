@@ -86,7 +86,7 @@ pip install numpy pandas scikit-learn
 
 # Usage
 
-To execute the various models, modify and run `EnsembleLearning.py`. Below is a brief guide on each model’s usage.
+To execute the various models, modify and run `BanknotesEL.py`. Below is a brief guide on each model’s usage.
 
 ### Standard Perceptron
 ```python
@@ -166,7 +166,7 @@ pip install numpy pandas
 
 ## Usage
 
-To execute the models, edit and run `LinearRegression.py`. The following examples guide you through each method.
+To execute the models, edit and run `BanknotesLR.py`. The following examples guide you through each method.
 
 ### Batch Gradient Descent
 
